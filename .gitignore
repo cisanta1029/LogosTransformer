@@ -1,4 +1,5 @@
 venv/
+cuda/
 __pycache__/
 *.pt
 *.bin
