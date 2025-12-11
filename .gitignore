@@ -4,3 +4,5 @@ cuda/
 __pycache__/
 *.pt
 *.bin
+old/
+readmes/
