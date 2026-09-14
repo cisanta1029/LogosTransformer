@@ -1,61 +1,73 @@
-# 📘 **LogosTransformer — A GPT-Style Language Model Trained on Philosophy Texts**
+# LogosTransformer
 
-## 🧠 Overview
-**LogosTransformer** is a miniature GPT-style transformer model trained **from scratch** in PyTorch using a **character-level tokenizer** and a corpus of philosophical writings (Aristotle, Socrates, Kant, Descartes, etc.).
+A decoder-only (GPT-style) transformer implemented from scratch in PyTorch and trained at the character level on a corpus of philosophical texts.
 
-This project is built entirely inside a Jupyter Notebook for transparency and educational value — no HuggingFace, no shortcuts.  
-By implementing attention, feed-forward layers, positional embeddings, and sampling logic from the ground up, this project demonstrates a working understanding of how GPT-style large language models operate internally.
+## Motivation
 
-The most compelling outcome is how **coherent, philosophy-inspired language emerges** from purely **character-level** training.
+The goal was to understand transformer architectures by building one, rather than by calling one. No HuggingFace, no `nn.Transformer`, no pretrained weights. Attention, masking, normalization, residual paths, positional embeddings, the training loop, and the sampling logic are all written directly.
 
----
+Character-level tokenization was chosen deliberately. It removes subword tokenization as a source of "hidden" structure, which makes the emergence of coherent language attributable to the model rather than to the tokenizer.
 
-# 🚀 Features
+## What is implemented
 
-### 🔡 Character-Level Tokenization  
-- Vocabulary consists of unique characters from the corpus  
-- Demonstrates how structure and meaning arise from minimal tokenization  
-- Enables training on arbitrarily large text files
+| Component | Notes |
+|---|---|
+| Character-level tokenizer | Vocabulary built from unique characters in the corpus |
+| Scaled dot-product attention | Implemented manually, including the `1/sqrt(d_k)` scaling |
+| Causal masking | Lower-triangular mask preventing attention to future positions |
+| Multi-head attention | Parallel heads, concatenated and projected |
+| Position-wise feed-forward network | Two linear layers with a 4x inner expansion |
+| Layer normalization and residual connections | Applied around both sub-layers of each block |
+| Learned positional embeddings | Added to token embeddings at the input |
+| Training loop | AdamW optimizer, learning rate schedule, periodic loss estimation over held-out batches |
+| Checkpointing | Save and resume model state |
+| Text generation | Autoregressive sampling with temperature control |
 
-### 🔥 Full Transformer Implementation (No External Libraries)
-Implemented manually:
-- Scaled dot-product attention  
-- Multi-head attention  
-- Feed-forward layers  
-- Layer normalization  
-- Residual connections  
-- Learned positional embeddings  
-- Training loop w/ optimizer, scheduler, and loss estimation  
-- Checkpoint saving + loading  
+## Architecture
 
-### ✍️ Text Generation
-- Temperature-controlled sampling  
-- Produces increasingly coherent output as training progresses  
-- Captures philosophical tone despite char-level encoding
+```
+input token ids
+  -> token embedding + learned positional embedding
+  -> N x transformer block:
+       layer norm -> multi-head causal self-attention -> residual add
+       layer norm -> feed-forward network            -> residual add
+  -> final layer norm
+  -> linear projection to vocabulary
+  -> softmax over next-character distribution
+```
 
----
+## Configuration
 
-# 📉 Training Progress
+```python
+block_size    = 64      # context window, in characters
+batch_size    = 64
+n_embd        = 384     # embedding dimension
+n_head        = 8       # attention heads per block
+n_layer       = 4       # transformer blocks
+dropout       = 0.2
+learning_rate = 3e-4
+max_iters     = 2000
+```
 
-The model shows strong learning behaviour, rapidly improving in the first few hundred steps and continuing to converge smoothly.
+Approximately 7M trainable parameters.
+
+## Results
+
+Training loss falls sharply over the first few hundred steps and continues to converge smoothly through step 2000.
 
 <p align="center">
   <img src="./assets/loss_curve.png" width="600">
 </p>
 
----
+The more interesting result is qualitative. Given the same prompt, output at initialization versus output at step 2000:
 
-# ✍️ Emergence of Coherent Philosophical Language
-
-### **🧪 Output at Start of Training**
+**Step 0**
 
 ```
-Hello! Can you see me?Mf5Ejæ’Pb-S8wx 4!9DK—wiPdjfouJ,L"p7WxVx7fBHtU 7i]HRaEx,﻿TIHJGXæ—eI﻿k5p7—;N*”qT=expR!YWBqEvt"]UM?:]﻿!-;IqlWr5e?RelxlgNr?f9'’eseeq]I0*AClX??qWw;)7;lJ’l'Ygp':f?;JlgU=BQYZ'U?JHuZ?5RaL“Fc﻿R7Zl?3xJHæb2;rgI
+Hello! Can you see me?Mf5Ejæ'Pb-S8wx 4!9DK—wiPdjfouJ,L"p7WxVx7fBHtU 7i]HRaEx,TIHJGXæ—eIk5p7—;N*"qT=expR!YWBqEvt"]UM?:]!-;IqlWr5e?RelxlgNr?f9''eseeq]I0*AClX??qWw;)7;lJ'l'Ygp':f?;JlgU=BQYZ'U?JHuZ?5RaL"FcR7Zl?3xJHæb2;rgI
 ```
 
----
-
-### **🧪 Output at Step 2000**
+**Step 2000**
 
 ```
 Hello! Can you see me? I ought to be absolute to one, and when he
@@ -64,68 +76,51 @@ the money, then, say, although they do not allow those who examine
 the same are objects
 ```
 
----
+Nothing about word boundaries, spelling, or syntax was supplied to the model. All of it was learned character by character from the training corpus.
 
-# 🧩 Architecture Summary
-
-```
-Token Embeddings  
-+ Positional Embeddings
-→ Multi-Head Self-Attention
-→ Feedforward Network
-→ LayerNorm + Residuals
-→ Linear Projection
-→ Softmax over next-token distribution
-```
-
----
-
-# 📁 Repository Structure
+## Repository structure
 
 ```
 ├── assets/
 │   └── loss_curve.png
 ├── data/
-│   └── philosophers.txt
-├── gpt-mk03-updated3.ipynb        # Main training notebook
-├── checkpoints/                   # Optional saved weights
-├── README.md
-└── requirements.txt
+│   └── philosophers.txt         # training corpus
+├── checkpoints/                 # saved model weights
+├── gpt-mk03-updated3.ipynb      # training and generation notebook
+├── requirements.txt
+└── README.md
 ```
 
----
+## Running the model
 
-# ⚙️ Hyperparameters Used
-
-```python
-block_size    = 64
-batch_size    = 64
-learning_rate = 3e-4
-
-n_embd  = 384
-n_head  = 8
-n_layer = 4
-dropout = 0.2
-
-max_iters = 2000
+```bash
+pip install -r requirements.txt
+jupyter notebook gpt-mk03-updated3.ipynb
 ```
 
----
+Training was run on a single machine without distributed setup. Reduce `max_iters` or `n_layer` for a faster pass.
 
-# 🔮 Next Steps
+## Scope and limitations
 
-### **1️⃣ Fine-Tuning Framework**
-### **2️⃣ Upgrade Tokenization**
-### **3️⃣ Expand Model Depth**
-### **4️⃣ Build an Interactive Web Demo**
-### **5️⃣ Add Evaluation Tools**
+This is a learning artifact, not a production language model. Specifically:
 
----
+- Character-level tokenization caps the effective information density per token compared to BPE or SentencePiece.
+- A 64-character context window is short enough that the model cannot track long-range argument structure.
+- At 2000 steps and ~7M parameters, the model produces locally fluent text without semantic grounding.
+- Evaluation is limited to training and validation loss. There are no downstream benchmarks.
 
-# 📜 License
-MIT License
+## Roadmap
 
----
+1. Replace character-level tokenization with byte-pair encoding and measure the effect on validation loss at fixed compute.
+2. Add an evaluation layer beyond loss, including perplexity on a held-out corpus and simple probes for syntactic consistency.
+3. Extend context length and depth, and profile the memory and throughput tradeoff.
+4. Add a parameter-efficient fine-tuning path (LoRA) on top of the trained base.
+5. Serve the model behind a small inference endpoint for interactive generation.
 
-# 🙌 Acknowledgements
-Model designed and implemented entirely by **Carlos Santa**.
+## License
+
+MIT
+
+## Author
+
+Carlos Santa. Designed and implemented independently.
